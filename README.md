@@ -33,3 +33,49 @@
 
 ```kafka```등을 사용하여 여러 서비스가 독립적으로 운영되는 마이크로서비스 아키텍처에서 이벤트를 공유하고 통신할 것이라 생각된다.
 
+#### 구현에 사용한 코드
+```java
+// springboot 애플리케이션 내에서의 이벤트를 전달하고 처리
+private final ApplicationEventPublisher eventPublisher;
+```
+
+```java 
+// <UsrService>
+
+// UserCreatedEvent 발행
+// UserCreatedEvent는 email를 필드로 갖고있는 POJO 형태
+// 이벤트 발생시 필요한 최소한의 정보를 포함한다.
+UserCreatedEvent event = new UserCreatedEvent(requestCreateDto.getEmail());
+eventPublisher.publishEvent(event);
+```
+
+
+```ApplicationEventpublisher```의 인스턴스가 이벤트를 발행하면 귀를 기울이고 있는 리스너가 반응한다.
+
+
+```java
+@Component
+@RequiredArgsConstructor
+public class UserEventListener {
+    private final JavaMailSender mailSender;
+
+    // @EventListner는 파라미터로 받는 이벤트의 타입에 따라 호출된다.
+    // 이벤트의 타입이 동일할 경우 순서가 보장되지 않으므로 
+    // @Order()를 통해 순서를 제어한다.
+    
+    @EventListener
+    @Order(1)
+    public void sendWelcomeEmail(UserCreatedEvent event) {
+        System.out.println("fisrt listener");
+        // 이메일 전송 로직
+    }
+    @EventListener
+    @Order(2)
+    public void secondLogic(UserCreatedEvent event) {
+        System.out.println("second listener");
+        // 두번째 곁가지 로직
+    }
+}
+```
+범용적으로 **@EventListener**를 사용하지만 이밖에 **@TransactionalEventListener**를 사용할 수도 있다. **AFTER_COMMIT**, **BEFORE_COMMIT**등 과 같은 설정을 통해 
+이벤트를 발행했던 트랜젝션 사이 원하는 순간에 실행할 수 있게 할 수 있습니다.
